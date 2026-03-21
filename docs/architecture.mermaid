@@ -1,0 +1,42 @@
+flowchart TD
+    subgraph Sensing Node ["Sensing Node — Arduino Uno R3"]
+        HC["HC-SR04\nUltrasonic Sensor"]
+        PIR["PIR\nMotion Sensor"]
+        KF["Kalman Filter\n1D probabilistic\nnoise reduction"]
+        FSM["FSM\nLIBRE / MONITOREANDO\nCERCA / PELIGRO"]
+        SERVO["Servo\nActuator"]
+        BUZZ["Buzzer\nAlert"]
+    end
+
+    subgraph Gateway ["MQTT Gateway — Raspberry Pi Pico W"]
+        UART["UART RX\n9600 baud"]
+        WIFI["WiFi 2.4 GHz"]
+        PUB["MQTT Publisher"]
+    end
+
+    subgraph LVShifter ["HW-221 Logic Level Shifter"]
+        LS["5V ↔ 3.3V\nbidirectional"]
+    end
+
+    subgraph Broker ["MQTT Broker — PC (Mosquitto 2.x)"]
+        MQ["Topics:\ndsplatform/sensor/distancia/raw\ndsplatform/sensor/distancia/filtrada\ndsplatform/sensor/pir\ndsplatform/sensor/estado"]
+    end
+
+    subgraph EdgeNode ["Edge Node — Raspberry Pi Zero 2 W"]
+        SUB["MQTT Subscriber\npaho-mqtt"]
+        DB["SQLite\nPersistence"]
+        API["REST API\nFlask\n/estado · /lecturas · /health"]
+    end
+
+    HC -->|raw distance| KF
+    PIR -->|motion signal| FSM
+    KF -->|filtered distance| FSM
+    FSM -->|actuate| SERVO
+    FSM -->|alert| BUZZ
+    FSM -->|CSV telemetry| LS
+    LS -->|3.3V UART| UART
+    UART --> PUB
+    PUB -->|MQTT over WiFi| MQ
+    MQ --> SUB
+    SUB --> DB
+    DB --> API
