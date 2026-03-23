@@ -20,6 +20,10 @@ Arduino Uno R3             Pico W               Pi Zero 2W
    5V logic      HW-221    3.3V logic           <edge-ip>:5000
 ```
 
+## Demo
+
+[![Distributed Sensing Platform Demo](https://img.youtube.com/vi/wTfh7YRz6LQ/maxresdefault.jpg)](https://www.youtube.com/watch?v=wTfh7YRz6LQ)
+
 ## Key Technical Concepts
 
 **Probabilistic state estimation** — A 1D Kalman filter runs directly on the Arduino to reduce ultrasonic measurement noise before state classification. Raw and filtered distances are both published, enabling downstream comparison of estimation quality.
