@@ -1,0 +1,24 @@
+# Python
+**pycache**/
+_.py[cod]
+_.pyo
+.venv/
+.uv/
+dist/
+\*.egg-info/
+
+# SQLite
+_.db
+_.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets — never commit credentials
+secrets.py
+.env
