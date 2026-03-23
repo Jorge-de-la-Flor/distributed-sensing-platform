@@ -25,12 +25,12 @@ import time
 from umqtt.simple import MQTTClient
 
 # ── Configuration ────────────────────────────────────────────────────────────
-WIFI_SSID     = "YOUR_SSID_HERE"
-WIFI_PASSWORD = "YOUR_PASSWORD_HERE"
+WIFI_SSID     = "YOUR_SSID_HERE"       # e.g. "MyNetwork"
+WIFI_PASSWORD = "YOUR_PASSWORD_HERE"   # e.g. "mypassword123"
 
-MQTT_SERVER   = "YOUR_MQTT_SERVER_IP_HERE"
+MQTT_SERVER   = "YOUR_MQTT_SERVER_IP_HERE"  # e.g. "192.168.1.100"
 MQTT_PORT     = 1883
-MQTT_CLIENT   = "PicoW-DSP"
+MQTT_CLIENT   = "YOUR_MQTT_CLIENT_HERE"     # e.g. "picow-node1"
 
 TOPIC_RAW      = b"dsplatform/sensor/distancia/raw"
 TOPIC_FILTERED = b"dsplatform/sensor/distancia/filtrada"
