@@ -2,19 +2,19 @@
 
 # Distributed Sensing Platform
 
-Un sistema de sensado cyber-físico que implementa fusión probabilística de sensores, control mediante máquina de estados finitos y persistencia distribuida de datos en nodos heterogéneos.
+Un sistema de sensado cyber-físico que implementa fusión probabilística de sensores, control mediante máquina de estados finitos, persistencia distribuida de datos y visualización en tiempo real a través de nodos heterogéneos.
 
 ## Descripción general
 
-Este proyecto demuestra una arquitectura de sensado distribuida completa de extremo a extremo: un nodo de sensado basado en microcontrolador adquiere y procesa datos multi-modal en tiempo real, transmite telemetría estructurada a un gateway MQTT inalámbrico, y la entrega a un nodo de cómputo edge para persistencia y exposición mediante REST API.
+Este proyecto demuestra una arquitectura de sensado distribuida completa de extremo a extremo: un nodo de sensado basado en microcontrolador adquiere y procesa datos multi-modal en tiempo real, transmite telemetría estructurada a un gateway MQTT inalámbrico, y la entrega a un nodo de cómputo edge para persistencia, exposición REST y visualización en un dashboard en vivo.
 
 ```bash
 Arduino Uno R3             Pico W               Pi Zero 2W
 ┌──────────────┐         ┌──────────┐         ┌────────────────┐
 │ HC-SR04      │         │          │  MQTT   │ Suscriptor MQTT│
-│ Sensor PIR   │─UART───▶│  WiFi   │────────▶│ Base SQLite    │
+│ Sensor PIR   │─UART───▶│  WiFi    │────────▶│ Base SQLite    │
 │ Filtro Kalman│         │  gateway │         │ REST API       │
-│ FSM + servo  │         │          │         │                │
+│ FSM + servo  │         │          │         │ Dashboard SSE  │
 │ Buzzer       │         │          │         │                │
 └──────────────┘         └──────────┘         └────────────────┘
    Lógica 5V     HW-221   Lógica 3.3V          <edge-ip>:5000
@@ -31,6 +31,8 @@ Arduino Uno R3             Pico W               Pi Zero 2W
 **Arquitectura edge distribuida** — La telemetría fluye a través de tres nodos físicamente distintos sobre dos capas de transporte (UART → MQTT/WiFi), con traducción de nivel lógico (5V ↔ 3.3V) gestionada por un shifter bidireccional HW-221.
 
 **Persistencia edge y exposición REST** — El Pi Zero 2W mantiene un almacén de series temporales SQLite local y expone la telemetría mediante una REST API Flask, desacoplando el pipeline de sensado de cualquier consumidor aguas abajo.
+
+**Dashboard en tiempo real via SSE** — Un stream de Server-Sent Events empuja cada trama de telemetría al dashboard del browser en el momento en que llega, con codificación de color según el estado FSM y sin necesidad de polling.
 
 ## Hardware
 
@@ -54,7 +56,7 @@ Arduino Uno R3             Pico W               Pi Zero 2W
 | 8      | HC-SR04 TRIG                     |
 | 7      | HC-SR04 ECHO                     |
 | 4      | Señal PIR                        |
-| 3      | PWM servo                        |
+| 9      | PWM servo                        |
 | 2      | Buzzer                           |
 | TX (1) | UART al Pico W via HW-221        |
 
@@ -95,6 +97,8 @@ URL base: `http://<edge-node-ip>:5000`
 GET /estado     → trama de telemetría más reciente
 GET /lecturas   → últimas 100 tramas (más recientes primero)
 GET /health     → verificación de disponibilidad del servicio
+GET /stream     → stream SSE de telemetría en vivo
+GET /dashboard  → dashboard en tiempo real en el browser
 ```
 
 Ejemplo de respuesta (`/estado`):
@@ -123,7 +127,7 @@ distributed-sensing-platform/
 ├── edge-node/
 │   ├── .python-version              # Versión de Python fijada
 │   ├── pyproject.toml               # Definición de proyecto uv
-│   └── server.py                    # REST API Flask + suscriptor MQTT
+│   └── server.py                    # REST API Flask + suscriptor MQTT + dashboard SSE
 ├── docs/
 │   └── architecture.mermaid         # Diagrama de arquitectura del sistema
 ├── README.md
@@ -160,6 +164,8 @@ uv run server.py
 
 Actualizar `MQTT_SERVER` y `DB_PATH` en `server.py` antes de ejecutar.
 
+Abrir el dashboard en vivo en `http://<edge-node-ip>:5000/dashboard`.
+
 ### Broker MQTT (Mosquitto)
 
 Crear `mosquitto.conf`:
@@ -179,7 +185,7 @@ Asegurarse de que el puerto 1883 sea accesible desde todos los nodos en la red l
 
 - Arduino IDE 2.x
 - Raspberry Pi Pico W con MicroPython v1.27+
-- Python 3.11+ (nodo edge)
+- Python 3.12+ (nodo edge)
 - uv
 - Mosquitto 2.x (broker MQTT)
 
@@ -188,6 +194,8 @@ Asegurarse de que el puerto 1883 sea accesible desde todos los nodos en la red l
 Los parámetros del filtro de Kalman (`Q=0.1`, `R=1.0`) fueron ajustados empíricamente para el HC-SR04 en rangos interiores. Aumentar `R` produce estimaciones más suaves a costa de latencia de seguimiento; disminuir `Q` reduce la capacidad de respuesta ante cambios de distancia rápidos.
 
 Los umbrales de estado de la FSM (20 cm / 50 cm) y el patrón de detección en dos etapas PIR + ultrasónico están diseñados para equilibrar sensibilidad frente a tasa de falsos positivos en un entorno interior estático.
+
+El endpoint SSE mantiene una cola por cliente y difunde cada trama de telemetría de forma atómica. Los clientes desconectados se detectan en la siguiente difusión y se eliminan del registro sin bloquear el hilo del worker MQTT.
 
 ## Referencias
 

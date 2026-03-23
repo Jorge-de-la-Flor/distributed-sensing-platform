@@ -6,7 +6,7 @@ A cyber-physical edge sensing system implementing probabilistic sensor fusion, f
 
 ## Overview
 
-This project demonstrates a complete end-to-end distributed sensing architecture: a microcontroller-based sensing node acquires and processes multi-modal sensor data in real time, transmits structured telemetry to a wireless MQTT gateway, and delivers it to an edge compute node for persistence and REST API exposure.
+This project demonstrates a complete end-to-end distributed sensing architecture: a microcontroller-based sensing node acquires and processes multi-modal sensor data in real time, transmits structured telemetry to a wireless MQTT gateway, and delivers it to an edge compute node for persistence, REST API exposure, and live dashboard visualisation.
 
 ```bash
 Arduino Uno R3             Pico W               Pi Zero 2W
@@ -14,7 +14,7 @@ Arduino Uno R3             Pico W               Pi Zero 2W
 │ HC-SR04      │         │          │  MQTT   │ MQTT Subscriber│
 │ PIR sensor   │─UART───▶│  WiFi   │────────▶│ SQLite store   │
 │ Kalman filter│         │  gateway │         │ REST API       │
-│ FSM + servo  │         │          │         │                │
+│ FSM + servo  │         │          │         │ SSE Dashboard  │
 │ Buzzer       │         │          │         │                │
 └──────────────┘         └──────────┘         └────────────────┘
    5V logic      HW-221    3.3V logic           <edge-ip>:5000
@@ -31,6 +31,8 @@ Arduino Uno R3             Pico W               Pi Zero 2W
 **Distributed edge architecture** — Telemetry flows across three physically distinct nodes over two transport layers (UART → MQTT/WiFi), with logic level translation (5V ↔ 3.3V) handled by a bidirectional HW-221 shifter.
 
 **Edge persistence and REST exposure** — The Pi Zero 2W maintains a local SQLite time-series store and exposes telemetry via a Flask REST API, decoupling the sensing pipeline from any downstream consumer.
+
+**Real-time dashboard via SSE** — A Server-Sent Events stream pushes each telemetry frame to a browser dashboard the moment it arrives, with FSM-state-aware colour coding and no polling required.
 
 ## Hardware
 
@@ -54,7 +56,7 @@ Arduino Uno R3             Pico W               Pi Zero 2W
 | 8      | HC-SR04 TRIG                     |
 | 7      | HC-SR04 ECHO                     |
 | 4      | PIR signal                       |
-| 3      | Servo PWM                        |
+| 9      | Servo PWM                        |
 | 2      | Buzzer                           |
 | TX (1) | UART to Pico W via HW-221        |
 
@@ -95,6 +97,8 @@ Base URL: `http://<edge-node-ip>:5000`
 GET /estado     → most recent telemetry frame
 GET /lecturas   → last 100 frames (newest first)
 GET /health     → service liveness check
+GET /stream     → SSE stream of live telemetry
+GET /dashboard  → real-time browser dashboard
 ```
 
 Example response (`/estado`):
@@ -123,7 +127,7 @@ distributed-sensing-platform/
 ├── edge-node/
 │   ├── .python-version              # Python version pin
 │   ├── pyproject.toml               # uv project definition
-│   └── server.py                    # Flask REST API + MQTT subscriber
+│   └── server.py                    # Flask REST API + MQTT subscriber + SSE dashboard
 ├── docs/
 │   └── architecture.mermaid         # System architecture diagram
 ├── README.md
@@ -160,6 +164,8 @@ uv run server.py
 
 Update `MQTT_SERVER` and `DB_PATH` in `server.py` before running.
 
+Open the live dashboard at `http://<edge-node-ip>:5000/dashboard`.
+
 ### MQTT Broker (Mosquitto)
 
 Create `mosquitto.conf`:
@@ -179,7 +185,7 @@ Ensure port 1883 is reachable from all nodes on the local network.
 
 - Arduino IDE 2.x
 - Raspberry Pi Pico W with MicroPython v1.27+
-- Python 3.11+ (edge node)
+- Python 3.12+ (edge node)
 - uv
 - Mosquitto 2.x (MQTT broker)
 
@@ -188,6 +194,8 @@ Ensure port 1883 is reachable from all nodes on the local network.
 The Kalman filter parameters (`Q=0.1`, `R=1.0`) were tuned empirically for the HC-SR04 at indoor ranges. Increasing `R` produces smoother estimates at the cost of tracking latency; decreasing `Q` reduces responsiveness to rapid distance changes.
 
 The FSM state boundaries (20 cm / 50 cm) and the two-stage PIR + ultrasonic detection pattern are designed to balance sensitivity against false-positive rate in a static indoor environment.
+
+The SSE endpoint maintains a per-client queue and broadcasts each telemetry frame atomically. Disconnected clients are detected on the next broadcast and removed from the registry without blocking the MQTT worker thread.
 
 ## References
 
