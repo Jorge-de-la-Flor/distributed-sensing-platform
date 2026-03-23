@@ -1,7 +1,7 @@
 [project]
-name = "distributed-sensing-platform"
+name = "edge-node"
 version = "0.1.0"
-description = "Add your description here"
+description = "MQTT subscriber, SQLite data store, and REST API for the distributed sensing platform"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

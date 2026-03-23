@@ -33,7 +33,7 @@ wheels = [
 ]
 
 [[package]]
-name = "distributed-sensing-platform"
+name = "edge-node"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
