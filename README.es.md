@@ -1,100 +1,100 @@
 [English](README.md) | Español
 
-# Plataforma de Detección Distribuida
+# Distributed Sensing Platform
 
-Sistema de detección ciberfísico en el borde que implementa fusión probabilística de sensores, control mediante máquina de estados finitos y persistencia distribuida de datos en el borde a través de nodos de hardware heterogéneos.
+Un sistema de sensado cyber-físico que implementa fusión probabilística de sensores, control mediante máquina de estados finitos y persistencia distribuida de datos en nodos heterogéneos.
 
 ## Descripción general
 
-Este proyecto demuestra una arquitectura completa de detección distribuida de extremo a extremo: un nodo de detección basado en microcontrolador adquiere y procesa datos de sensores multimodales en tiempo real, transmite telemetría estructurada a una puerta de enlace inalámbrica y la entrega a un nodo de computación en el borde para su persistencia y exposición a la API REST.
+Este proyecto demuestra una arquitectura de sensado distribuida completa de extremo a extremo: un nodo de sensado basado en microcontrolador adquiere y procesa datos multi-modal en tiempo real, transmite telemetría estructurada a un gateway MQTT inalámbrico, y la entrega a un nodo de cómputo edge para persistencia y exposición mediante REST API.
 
 ```bash
 Arduino Uno R3             Pico W               Pi Zero 2W
 ┌──────────────┐         ┌──────────┐         ┌────────────────┐
-│ HC-SR04      │         │  Puerta  │  MQTT   │ Suscriptor MQTT│
-│ Sensor PIR   │─UART──▶│   de     │────────▶│ Almacenamiento │
-│ Filtro Kalman│         │  enlace  │         │ SQLite         │
-│ FSM + servo  │         │  WiFi    │         │ API REST       │
+│ HC-SR04      │         │          │  MQTT   │ Suscriptor MQTT│
+│ Sensor PIR   │─UART───▶│  WiFi   │────────▶│ Base SQLite    │
+│ Filtro Kalman│         │  gateway │         │ REST API       │
+│ FSM + servo  │         │          │         │                │
 │ Buzzer       │         │          │         │                │
 └──────────────┘         └──────────┘         └────────────────┘
-  Lógica de 5V   HW-221  Lógica de 3.3V        192.168.x.x:5000
+   Lógica 5V     HW-221   Lógica 3.3V          <edge-ip>:5000
 ```
 
 ## Conceptos técnicos clave
 
-**Estimación de estado probabilística** — Un filtro de Kalman 1D se ejecuta en Arduino para reducir el ruido de medición ultrasónica antes de la clasificación del estado. Se publican tanto las distancias sin procesar como las filtradas, lo que permite comparar posteriormente la calidad de la estimación.
+**Estimación probabilística de estado** — Un filtro de Kalman 1D corre directamente en el Arduino para reducir el ruido de medición del sensor ultrasónico antes de la clasificación de estado. Las distancias crudas y filtradas se publican por separado, permitiendo comparar la calidad de estimación aguas abajo.
 
-**Arquitectura de máquina de estados finitos** — El comportamiento del sistema se estructura como una máquina de estados finitos explícita con cuatro estados (`LIBRE`, `MONITOREANDO`, `CERCA`, `PELIGRO`). Las transiciones se controlan mediante la fusión de señales PIR y ultrasónicas filtradas, lo que produce una lógica de control determinista e inspeccionable.
+**Arquitectura de máquina de estados finitos** — El comportamiento del sistema se estructura como una FSM explícita con cuatro estados (`LIBRE`, `MONITOREANDO`, `CERCA`, `PELIGRO`). Las transiciones están determinadas por la fusión de las entradas PIR y ultrasónico filtrado, produciendo lógica de control determinista e inspeccionable.
 
-**Fusión de sensores multimodales** — Se combinan las modalidades de detección PIR (infrarrojo pasivo) y ultrasónica: el PIR activa el sistema de monitorización y el ultrasónico cuantifica la proximidad. Este patrón de detección en dos etapas reduce los falsos positivos.
+**Fusión de sensores multi-modal** — Las modalidades de sensado PIR (infrarrojo pasivo) y ultrasónico se combinan: el PIR activa el pipeline de monitoreo, el ultrasónico cuantifica la proximidad. Este patrón de detección en dos etapas reduce los falsos positivos.
 
-**Arquitectura distribuida en el borde** — La telemetría fluye a través de tres nodos físicamente distintos mediante dos capas de transporte (UART → MQTT/WiFi), con la conversión de nivel lógico (5 V ↔ 3,3 V) gestionada por un convertidor bidireccional HW-221.
+**Arquitectura edge distribuida** — La telemetría fluye a través de tres nodos físicamente distintos sobre dos capas de transporte (UART → MQTT/WiFi), con traducción de nivel lógico (5V ↔ 3.3V) gestionada por un shifter bidireccional HW-221.
 
-**Persistencia en el borde y exposición REST** — La Raspberry Pi Zero 2W mantiene un almacenamiento local de series temporales SQLite y expone la telemetría a través de una API REST de Flask, desacoplando el sistema de detección de cualquier consumidor posterior.
+**Persistencia edge y exposición REST** — El Pi Zero 2W mantiene un almacén de series temporales SQLite local y expone la telemetría mediante una REST API Flask, desacoplando el pipeline de sensado de cualquier consumidor aguas abajo.
 
 ## Hardware
 
-| Componente           | Rol                                                                        |
-| -------------------- | -------------------------------------------------------------------------- |
-| Arduino Uno R3       | Detección, filtrado de Kalman, máquina de estados finitos (FSM), actuación |
-| HC-SR04              | Medición de distancia por ultrasonido                                      |
-| Sensor PIR           | Detección de movimiento por infrarrojos pasivos                            |
-| Servo (180°)         | Actuador físico controlado por estado                                      |
-| Buzzer activo        | Alerta de proximidad                                                       |
-| HW-221 shifter       | Conversión de nivel lógico de 5V ↔ 3.3V                                    |
-| Raspberry Pi Pico W  | Receptor UART, puerta de enlace WiFi MQTT                                  |
-| Raspberry Pi Zero 2W | Nodo perimetral: suscriptor MQTT, SQLite, API REST                         |
+| Componente           | Función                                           |
+| -------------------- | ------------------------------------------------- |
+| Arduino Uno R3       | Sensado, filtro Kalman, FSM, actuación            |
+| HC-SR04              | Medición de distancia ultrasónica                 |
+| Sensor PIR           | Detección de movimiento por infrarrojo pasivo     |
+| Servo (180°)         | Actuador físico controlado por estado             |
+| Buzzer activo        | Alerta de proximidad                              |
+| Shifter HW-221       | Traducción de nivel lógico 5V ↔ 3.3V              |
+| Raspberry Pi Pico W  | Receptor UART, gateway MQTT WiFi                  |
+| Raspberry Pi Zero 2W | Nodo edge: suscriptor MQTT, SQLite, REST API      |
 
-## Asignación de pines
+## Mapeo de pines
 
 ### Arduino Uno R3
 
-| Pin    | Function                |
-| ------ | ----------------------- |
-| 8      | HC-SR04 TRIG            |
-| 7      | HC-SR04 ECHO            |
-| 4      | Señal PIR               |
-| 3      | Servo PWM               |
-| 2      | Buzzer                  |
-| TX (1) | UARTa Pico W via HW-221 |
+| Pin    | Función                          |
+| ------ | -------------------------------- |
+| 8      | HC-SR04 TRIG                     |
+| 7      | HC-SR04 ECHO                     |
+| 4      | Señal PIR                        |
+| 3      | PWM servo                        |
+| 2      | Buzzer                           |
+| TX (1) | UART al Pico W via HW-221        |
 
 ### Raspberry Pi Pico W
 
-| Pin      | Function                      |
-| -------- | ----------------------------- |
-| GP0 (RX) | UART desde Arduino via HW-221 |
-| GP1 (TX) | UART a Arduino (referencia)   |
+| Pin      | Función                             |
+| -------- | ----------------------------------- |
+| GP0 (RX) | UART desde Arduino via HW-221       |
+| GP1 (TX) | UART al Arduino (solo referencia)   |
 
-## Temas MQTT
+## Topics MQTT
 
-| Topic                                  | Type  | Description                                           |
-| -------------------------------------- | ----- | ----------------------------------------------------- |
-| `dsplatform/sensor/distancia/raw`      | float | Lectura ultrasónica sin filtrar (cm)                  |
-| `dsplatform/sensor/distancia/filtrada` | float | Estimación filtrada mediante el método de Kalman (cm) |
-| `dsplatform/sensor/pir`                | int   | Detección de movimiento PIR (0 \| 1)                  |
-| `dsplatform/sensor/estado`             | str   | Etiqueta del estado FSM                               |
+| Topic                                  | Tipo  | Descripción                           |
+| -------------------------------------- | ----- | ------------------------------------- |
+| `dsplatform/sensor/distancia/raw`      | float | Lectura ultrasónica sin filtrar (cm)  |
+| `dsplatform/sensor/distancia/filtrada` | float | Estimación filtrada por Kalman (cm)   |
+| `dsplatform/sensor/pir`                | int   | Detección de movimiento PIR (0 \| 1)  |
+| `dsplatform/sensor/estado`             | str   | Etiqueta de estado FSM                |
 
-## Transiciones de estado del FSM
+## Transiciones de estado FSM
 
 ```bash
-              PIR=0, dist > 50
-    ┌─────────────────────────────────┐
-    │                                 ▼
-PELIGRO ◀── dist ≤ 20 ──── LIBRE ──────────── MONITOREANDO
-    │                        │   PIR=1, dist>50      │
-    │                        │◀──────────────────────┘
-    └─── dist > 20 ─────▶ CERCA
-                      20 < dist ≤ 50
+                  PIR=0, dist > 50 cm
+       ┌──────────────────────────────────┐
+       │                                  ▼
+  PELIGRO ◀── dist ≤ 20 cm ──── LIBRE ────────── MONITOREANDO
+       │                           │  PIR=1, dist > 50 cm  │
+       │                           │◀──────────────────────┘
+       └──── dist > 20 cm ────▶ CERCA
+                          20 cm < dist ≤ 50 cm
 ```
 
-## API REST
+## REST API
 
-URL base: `http://192.168.1.43:5000`
+URL base: `http://<edge-node-ip>:5000`
 
 ```bash
-GET /estado → trama de telemetría más reciente
-GET /lecturas → últimas 100 tramas (de la más reciente a la más antigua)
-GET /health → estado de actividad del servicio
+GET /estado     → trama de telemetría más reciente
+GET /lecturas   → últimas 100 tramas (más recientes primero)
+GET /health     → verificación de disponibilidad del servicio
 ```
 
 Ejemplo de respuesta (`/estado`):
@@ -117,13 +117,13 @@ distributed-sensing-platform/
 ├── firmware/
 │   ├── arduino/
 │   │   └── sensing_node/
-│   │       └── sensing_node.ino     # # Firmware de Arduino en C++
+│   │       └── sensing_node.ino     # Firmware Arduino C++
 │   └── pico/
-│       └── main.py                  # Puerta de enlace MicroPython para Pico W
+│       └── main.py                  # Gateway MicroPython Pico W
 ├── edge-node/
-│   ├── .python-version              # Selección del python-version
-│   ├── pyproject.toml               # Definición del proyecto UV
-│   └── server.py                    # # API REST de Flask + suscriptor MQTT
+│   ├── .python-version              # Versión de Python fijada
+│   ├── pyproject.toml               # Definición de proyecto uv
+│   └── server.py                    # REST API Flask + suscriptor MQTT
 ├── docs/
 │   └── architecture.mermaid         # Diagrama de arquitectura del sistema
 ├── README.md
@@ -134,27 +134,33 @@ distributed-sensing-platform/
 
 ### Arduino
 
-Abre `firmware/arduino/sensing_node/sensing_node.ino` en el IDE de Arduino. Instala la librería `Servo` (incluida). Selecciona la placa `Arduino Uno` y cárgala.
+Abrir `firmware/arduino/sensing_node/sensing_node.ino` en Arduino IDE. La librería `Servo` viene incluida con el IDE. Seleccionar placa `Arduino Uno` y subir el firmware.
 
 ### Pico W
 
-Flashea MicroPython v1.27 (variante Raspberry Pi Pico W) mediante Thonny. Instala `micropython-umqtt.simple` desde el gestor de paquetes de Thonny. Copia `firmware/pico/main.py` a la raíz de Pico. Actualiza las constantes `WIFI_SSID`, `WIFI_PASSWORD` y `MQTT_SERVER`.
+Flashear MicroPython v1.27 (variante Raspberry Pi Pico W) via Thonny. Instalar `micropython-umqtt.simple` desde el gestor de paquetes de Thonny. Copiar `firmware/pico/main.py` a la raíz del Pico. Actualizar las constantes de configuración al inicio del archivo:
 
-### Nodo Edge (Pi Zero 2W)
+```python
+WIFI_SSID     = "tu_red"
+WIFI_PASSWORD = "tu_contraseña"
+MQTT_SERVER   = "ip_del_broker"
+```
+
+### Nodo edge (Pi Zero 2W)
 
 ```bash
 # Instalar uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Instalar dependencias
+# Instalar dependencias y ejecutar
 cd edge-node
 uv sync
-
-# Ejecutar
 uv run server.py
 ```
 
-### Broker MQTT (PC — Mosquitto)
+Actualizar `MQTT_SERVER` y `DB_PATH` en `server.py` antes de ejecutar.
+
+### Broker MQTT (Mosquitto)
 
 Crear `mosquitto.conf`:
 
@@ -163,15 +169,34 @@ listener 1883
 allow_anonymous true
 ```
 
-Ejecutar: `mosquitto -c mosquitto.conf -v`
+```bash
+mosquitto -c mosquitto.conf -v
+```
 
-Asegúrese de que el puerto 1883 esté abierto en el firewall del host.
+Asegurarse de que el puerto 1883 sea accesible desde todos los nodos en la red local.
+
+## Requisitos
+
+- Arduino IDE 2.x
+- Raspberry Pi Pico W con MicroPython v1.27+
+- Python 3.11+ (nodo edge)
+- uv
+- Mosquitto 2.x (broker MQTT)
 
 ## Notas de diseño
 
-Los parámetros del filtro de Kalman (`Q=0.1`, `R=1.0`) se ajustaron empíricamente para el HC-SR04 en interiores. Aumentar `R` produce estimaciones más suaves a costa de una mayor latencia de seguimiento; Disminuir el valor de `Q` reduce la capacidad de respuesta a cambios rápidos de distancia.
+Los parámetros del filtro de Kalman (`Q=0.1`, `R=1.0`) fueron ajustados empíricamente para el HC-SR04 en rangos interiores. Aumentar `R` produce estimaciones más suaves a costa de latencia de seguimiento; disminuir `Q` reduce la capacidad de respuesta ante cambios de distancia rápidos.
 
-Los límites de estado de la máquina de estados finitos (20 cm / 50 cm) y el patrón de detección PIR+ultrasónica de dos etapas están diseñados para equilibrar la sensibilidad con la tasa de falsos positivos en un entorno interior estático.
+Los umbrales de estado de la FSM (20 cm / 50 cm) y el patrón de detección en dos etapas PIR + ultrasónico están diseñados para equilibrar sensibilidad frente a tasa de falsos positivos en un entorno interior estático.
+
+## Referencias
+
+- Welch, G., & Bishop, G. (2006).
+  *An Introduction to the Kalman Filter.*
+- Thrun, S., Burgard, W., & Fox, D. (2005).
+  *Probabilistic Robotics.*
+- HiveMQ. (2024).
+  *MQTT Essentials.*
 
 ## Licencia
 
