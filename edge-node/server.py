@@ -31,9 +31,9 @@ from flask import Flask, Response, jsonify
 
 # ── Configuration ────────────────────────────────────────────────────────────
 # Replace these with your real MQTT broker address and local DB path on the Pi
-MQTT_SERVER = "YOUR_SSID_HERE"  # fake example: 192.168.1.100
+MQTT_SERVER = "YOUR_MQTT_SERVER_IP_HERE"  # e.g. "192.168.1.100"
 MQTT_PORT   = 1883
-DB_PATH     = "YOUR_DB_PATH_HERE"  # fake example: /home/user/app.db
+DB_PATH     = "YOUR_DB_PATH_HERE"         # e.g. "/home/user/app.db"
 API_HOST    = "0.0.0.0"
 API_PORT    = 5000
 
