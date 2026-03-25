@@ -4,7 +4,7 @@ flowchart TD
         PIR["PIR\nMotion Sensor"]
         KF["Kalman Filter\n1D probabilistic\nnoise reduction"]
         FSM["FSM\nLIBRE / MONITOREANDO\nCERCA / PELIGRO"]
-        SERVO["Servo\nActuator"]
+        SERVO["Servo\nActuator (pin 9)"]
         BUZZ["Buzzer\nAlert"]
     end
 
@@ -25,7 +25,8 @@ flowchart TD
     subgraph EdgeNode ["Edge Node — Raspberry Pi Zero 2 W"]
         SUB["MQTT Subscriber\npaho-mqtt"]
         DB["SQLite\nPersistence"]
-        API["REST API\nFlask\n/estado · /lecturas · /health"]
+        API["REST API — Flask\n/estado · /lecturas · /health"]
+        SSE["SSE Dashboard\n/stream · /dashboard\nreal-time browser UI"]
     end
 
     HC -->|raw distance| KF
@@ -40,3 +41,4 @@ flowchart TD
     MQ --> SUB
     SUB --> DB
     DB --> API
+    SUB --> SSE
